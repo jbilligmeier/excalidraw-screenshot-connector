@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  excalidraw-screenshot-connector gateway — macOS user LaunchAgent.
+  Runs as YOUR login user (it drives a headless Chromium, which needs your GUI
+  session). One tool: screenshot_excalidraw(url). No backend, no Full Disk Access.
+
+  These templates are ILLUSTRATIVE — install.sh generates the real, filled-in
+  plists from your .env and detected paths. Prefer `./install.sh`.
+
+  Setup (manual):
+    1. Replace every __PLACEHOLDER__ (username, public URL, Google creds, allowlist).
+    2. uv run server.py --install-browsers     # one-time Chromium download
+    3. cp launchd/excalidraw-screenshot-connector.plist ~/Library/LaunchAgents/
+    4. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/excalidraw-screenshot-connector.plist
+
+  Keep your filled-in copy OUT of git — secrets belong only in ~/Library/LaunchAgents.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>excalidraw-screenshot-connector</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Optional keep-awake: prepend caffeinate by uncommenting the next two lines. -->
+        <!-- <string>/usr/bin/caffeinate</string> -->
+        <!-- <string>-i</string> -->
+        <string>/Users/__USERNAME__/.local/bin/uv</string>
+        <string>run</string>
+        <string>/Users/__USERNAME__/development/excalidraw-screenshot-connector/server.py</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PUBLIC_URL</key>
+        <string>__PUBLIC_URL__</string>
+        <key>GOOGLE_CLIENT_ID</key>
+        <string>__GOOGLE_CLIENT_ID__</string>
+        <key>GOOGLE_CLIENT_SECRET</key>
+        <string>__GOOGLE_CLIENT_SECRET__</string>
+        <key>ALLOWED_EMAILS</key>
+        <string>__ALLOWED_EMAILS__</string>
+        <key>PORT</key>
+        <string>8040</string>
+        <!-- uv must resolve under launchd's minimal PATH -->
+        <key>PATH</key>
+        <string>/Users/__USERNAME__/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/__USERNAME__/development/excalidraw-screenshot-connector</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/excalidraw-screenshot-connector.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/excalidraw-screenshot-connector.err</string>
+</dict>
+</plist>

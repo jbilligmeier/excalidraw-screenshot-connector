@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ngrok tunnel for excalidraw-screenshot-connector — macOS user LaunchAgent.
+  Exposes the local gateway (port 8040) at your static ngrok domain.
+
+  These templates are ILLUSTRATIVE — install.sh generates the real, filled-in
+  plists. Prefer `./install.sh`.
+
+  Prereq (once): ngrok config add-authtoken <YOUR_NGROK_TOKEN>
+  Setup:
+    1. Replace __PUBLIC_URL__ below.
+    2. cp launchd/excalidraw-screenshot-connector-ngrok.plist ~/Library/LaunchAgents/
+    3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/excalidraw-screenshot-connector-ngrok.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>excalidraw-screenshot-connector-ngrok</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/ngrok</string>
+        <string>http</string>
+        <string>--url=__PUBLIC_URL__</string>
+        <string>8040</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/excalidraw-screenshot-connector-ngrok.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/excalidraw-screenshot-connector-ngrok.err</string>
+</dict>
+</plist>
