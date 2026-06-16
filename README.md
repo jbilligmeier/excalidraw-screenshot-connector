@@ -1,5 +1,8 @@
 # excalidraw-screenshot-connector
 
+> [!WARNING]
+> **For people who know what they're doing.** This project hosts infrastructure on your machine and exposes part of your computer to the public internet. Only use it if you fully understand every authentication and configuration step involved — OAuth, the tunnel, and the allowlist. Misconfiguring any of them can leave your data open to anyone.
+
 **Let [Claude.ai](https://claude.ai) *look at* your [Excalidraw](https://excalidraw.com) drawing from a URL** — self-hosted on your Mac, gated by Google OAuth so only people you allow can use it.
 
 One tool: `screenshot_excalidraw(url)`. Claude passes an Excalidraw **Live collaboration** link; the server joins the room with its *own* headless Chromium, frames the drawing, and hands back a clean PNG. Built for sketch-and-critique loops — e.g. **system-design practice**: you draw your design, ask Claude how you did, it looks and tells you what's missing; you refine, ask again, same URL.
