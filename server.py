@@ -14,7 +14,7 @@ It owns its own headless Chromium (via Playwright) — it never needs your brows
 tab. The scene is end-to-end encrypted with the key in the URL fragment, so only
 a real browser that loads the URL can render it; there is no server-side API.
 
-Like the sibling connectors, it's gated by Google OAuth 2.1 + PKCE (what Claude.ai
+It's gated by Google OAuth 2.1 + PKCE (what Claude.ai
 custom connectors require) and an email/domain allowlist. Config is env-only
 (see .env.example). Run on a Mac inside your GUI/login session:
 
@@ -57,7 +57,7 @@ if "--install-browsers" in sys.argv:
     sys.exit(subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"]))
 
 
-# --- Access control (identical model to the sibling connectors) ------------
+# --- Access control --------------------------------------------------------
 ALLOWED_EMAILS = _split_env("ALLOWED_EMAILS")
 ALLOWED_DOMAINS = _split_env("ALLOWED_DOMAINS")
 EMAIL_CLAIM = os.environ.get("EMAIL_CLAIM", "email")

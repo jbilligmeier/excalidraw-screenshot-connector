@@ -5,7 +5,7 @@
 
 **Let [Claude.ai](https://claude.ai) *look at* your [Excalidraw](https://excalidraw.com) drawing from a URL** — self-hosted on your Mac, gated by Google OAuth so only people you allow can use it.
 
-One tool: `screenshot_excalidraw(url)`. Claude passes an Excalidraw **Live collaboration** link; the server joins the room with its *own* headless Chromium, frames the drawing, and hands back a clean PNG. Built for sketch-and-critique loops — e.g. **system-design practice**: you draw your design, ask Claude how you did, it looks and tells you what's missing; you refine, ask again, same URL.
+One tool: `screenshot_excalidraw(url)`. Claude passes an Excalidraw **Live collaboration** link; the server joins the room with its *own* headless Chromium, frames the drawing, and returns a clean PNG. Built for sketch-and-critique loops — e.g. **system-design practice**: draw, ask Claude how you did, refine, repeat — same URL.
 
 ```
 Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
@@ -18,10 +18,10 @@ Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
 
 ## Why it's shaped this way
 
-- **No live canvas, no sync, no second browser.** Unlike a collaborative-canvas backend, this only needs to *render* your drawing on demand. The server drives its **own** headless browser — it never borrows your tab, so "browser isn't connected" can't happen.
-- **There's no server-side Excalidraw API.** A shared scene is end-to-end encrypted with the key in the URL **fragment** (`#room=id,key`), which never reaches any server. Only a real browser that loads the URL can decrypt and render it — so a headless browser screenshot is the right (and only) approach.
-- **Clean image, no UI chrome.** Excalidraw paints on a `<canvas>` with its UI in a separate overlay layer; the server zooms-to-fit and hides that layer, so you get just the drawing (equivalent to a native PNG export, but reliable headless — the native export dialog's download misbehaves in headless Chromium).
-- **Same auth as the sibling connectors** — Google OAuth 2.1 + PKCE (what Claude.ai requires) + a fail-closed email/domain allowlist. Pins `fastmcp<3`.
+- **Its own browser, not yours.** The server only needs to *render* your drawing on demand, so it drives its **own** headless browser — it never borrows your tab, so "browser isn't connected" can't happen.
+- **There's no server-side Excalidraw API.** A shared scene is end-to-end encrypted with the key in the URL **fragment** (`#room=id,key`) — only a real browser that loads the URL can decrypt it. A headless screenshot is the only approach.
+- **Clean image, no UI chrome.** The server zooms-to-fit and hides Excalidraw's UI overlay, so you get just the drawing — a reliable headless equivalent of a native PNG export.
+- **Auth** — Google OAuth 2.1 + PKCE (what Claude.ai requires) plus a fail-closed email/domain allowlist.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
 
 - **[uv](https://docs.astral.sh/uv/)** — `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 - **Playwright Chromium** — installed once by `install.sh` (or `uv run server.py --install-browsers`).
-- A **Google Cloud project** for an OAuth client (you can reuse a sibling connector's).
+- A **Google Cloud project** for an OAuth client (an existing one works too).
 - A **public HTTPS tunnel** to `127.0.0.1:8040` ([ngrok](https://ngrok.com/) static domain is the easy default).
 
 ## Configuration
@@ -38,7 +38,7 @@ All config is environment variables (see [`.env.example`](.env.example)):
 
 | Variable               | Required | Default     | Purpose |
 | ---------------------- | -------- | ----------- | ------- |
-| `PUBLIC_URL`           | yes      | —           | Public HTTPS URL of the gateway. Register `{PUBLIC_URL}/auth/callback` in Google. Must differ from the other connectors'. |
+| `PUBLIC_URL`           | yes      | —           | Public HTTPS URL of the gateway. Register `{PUBLIC_URL}/auth/callback` in Google. Use a domain dedicated to this connector. |
 | `GOOGLE_CLIENT_ID`     | yes      | —           | OAuth 2.0 Web client ID. |
 | `GOOGLE_CLIENT_SECRET` | yes      | —           | OAuth 2.0 Web client secret. |
 | `ALLOWED_EMAILS`       | one of\* | —           | Comma-separated exact addresses (case-insensitive). |
@@ -55,7 +55,7 @@ All config is environment variables (see [`.env.example`](.env.example)):
 
 ### 1. Create (or reuse) a Google OAuth client
 
-Easiest: **reuse a sibling connector's client** — add this connector's `{PUBLIC_URL}/auth/callback` as an extra **Authorized redirect URI**, and copy the same Client ID / Secret into `.env`. Or create a fresh **Web application** client (consent screen *Internal* or *Testing* with your account; scopes `openid` + `.../auth/userinfo.email`).
+If you already have a Google OAuth client, you can **reuse it** — add this connector's `{PUBLIC_URL}/auth/callback` as an extra **Authorized redirect URI**, and copy the same Client ID / Secret into `.env`. Otherwise create a fresh **Web application** client (consent screen *Internal* or *Testing* with your account; scopes `openid` + `.../auth/userinfo.email`).
 
 ### 2. Configure & install
 
