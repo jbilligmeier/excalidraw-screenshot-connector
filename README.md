@@ -7,6 +7,12 @@
 
 One tool: `screenshot_excalidraw(url)`. Claude passes an Excalidraw **Live collaboration** link; the server joins the room with its *own* headless Chromium, frames the drawing, and returns a clean PNG. Built for sketch-and-critique loops — e.g. **system-design practice**: draw, ask Claude how you did, refine, repeat — same URL.
 
+## Why I built this
+
+I wanted an easy way for Claude to *see* my diagrams and hand-drawn sketches in Excalidraw. Most Excalidraw MCPs go the other direction — they have Claude *create* content for you — and I couldn't find anything for genuine two-way collaboration.
+
+This is the next best thing: one-way monitoring, so Claude can see exactly what you're drawing without you uploading an image every turn. I use it for system-design practice, brainstorming, and anything where I want to sketch and get immediate feedback.
+
 ```
 Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
                      your-domain.dev              │
