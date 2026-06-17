@@ -15,7 +15,7 @@ tab. The scene is end-to-end encrypted with the key in the URL fragment, so only
 a real browser that loads the URL can render it; there is no server-side API.
 
 It's gated by Google OAuth 2.1 + PKCE (what Claude.ai
-custom connectors require) and an email/domain allowlist. Config is env-only
+custom connectors require) and an exact-email allowlist. Config is env-only
 (see .env.example). Run on a Mac inside your GUI/login session:
 
     PUBLIC_URL=https://your-domain.ngrok-free.app \
@@ -59,15 +59,17 @@ if "--install-browsers" in sys.argv:
 
 
 # --- Access control --------------------------------------------------------
+# Allow only specific Google account(s), matched by exact email address
+# (case-insensitive; comma-separated if you ever need more than one). Built for
+# single-user personal use, so there is no domain-based allowlisting.
 ALLOWED_EMAILS = _split_env("ALLOWED_EMAILS")
-ALLOWED_DOMAINS = _split_env("ALLOWED_DOMAINS")
 EMAIL_CLAIM = os.environ.get("EMAIL_CLAIM", "email")
 DEBUG = _truthy("DEBUG")
 
-if not ALLOWED_EMAILS and not ALLOWED_DOMAINS:
+if not ALLOWED_EMAILS:
     raise SystemExit(
-        "Refusing to start: set ALLOWED_EMAILS and/or ALLOWED_DOMAINS to gate "
-        "access. Without an allowlist, any Google account that completes the "
+        "Refusing to start: set ALLOWED_EMAILS to the exact Google address "
+        "allowed to connect. Without it, any Google account that completes the "
         "OAuth flow could drive this tool."
     )
 
@@ -87,27 +89,14 @@ ALLOWED_REDIRECT_URI_PATTERNS = [
 
 
 def _is_allowed(claims: dict) -> bool:
-    """Authorize a request from its OAuth claims. An exact ALLOWED_EMAILS match
-    is trusted as-is (a pre-authorized address you control). A domain match
-    additionally requires a Google-verified email, since an unverified address
-    in an allowed domain is attacker-settable."""
+    """Allow only the exact Google address(es) listed in ALLOWED_EMAILS
+    (case-insensitive). Single-user by design: no domain matching."""
     email = (claims.get(EMAIL_CLAIM) or "").strip().lower()
-    if not email:
-        return False
-    if email in ALLOWED_EMAILS:
-        return True
-    return _is_verified(claims) and email.rpartition("@")[2] in ALLOWED_DOMAINS
-
-
-def _is_verified(claims: dict) -> bool:
-    """Google must assert the email is verified — otherwise the address is
-    attacker-settable and the allowlist (esp. ALLOWED_DOMAINS) is spoofable."""
-    v = claims.get("email_verified")
-    return v is True or (isinstance(v, str) and v.strip().lower() == "true")
+    return bool(email) and email in ALLOWED_EMAILS
 
 
 class OnlyAllowed(Middleware):
-    """Reject any authenticated user not on the email/domain allowlist."""
+    """Reject any authenticated user not on the email allowlist."""
 
     async def on_request(self, context: MiddlewareContext, call_next):
         token = get_access_token()

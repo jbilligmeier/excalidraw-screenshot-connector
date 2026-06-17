@@ -17,7 +17,7 @@ This is the next best thing: one-way monitoring, so Claude can see exactly what 
 Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
                      your-domain.dev              │
                                           FastMCP server  (Google OAuth 2.1 + PKCE
-                                                   │        + email/domain allowlist)
+                                                   │        + email allowlist)
                                                    │ owns a headless Chromium (Playwright)
                                           excalidraw.com/#room=…  ──▶  clean PNG of the canvas
 ```
@@ -27,7 +27,7 @@ Claude.ai ──HTTPS──▶ tunnel (e.g. ngrok) ──▶ 127.0.0.1:8040
 - **Its own browser, not yours.** The server only needs to *render* your drawing on demand, so it drives its **own** headless browser; it never borrows your tab, so "browser isn't connected" can't happen.
 - **There's no server-side Excalidraw API.** A shared scene is end-to-end encrypted with the key in the URL **fragment** (`#room=id,key`); only a real browser that loads the URL can decrypt it. A headless screenshot is the only approach.
 - **Clean image, no UI chrome.** The server zooms-to-fit and hides Excalidraw's UI overlay, so you get just the drawing: a reliable headless equivalent of a native PNG export.
-- **Auth**: Google OAuth 2.1 + PKCE (what Claude.ai requires) plus a fail-closed email/domain allowlist.
+- **Auth**: Google OAuth 2.1 + PKCE (what Claude.ai requires) plus a fail-closed email allowlist.
 
 ## Requirements
 
@@ -47,15 +47,12 @@ All config is environment variables (see [`.env.example`](.env.example)):
 | `PUBLIC_URL`           | yes      | n/a         | Public HTTPS URL of the gateway. Register `{PUBLIC_URL}/auth/callback` in Google. Use a domain dedicated to this connector. |
 | `GOOGLE_CLIENT_ID`     | yes      | n/a         | OAuth 2.0 Web client ID. |
 | `GOOGLE_CLIENT_SECRET` | yes      | n/a         | OAuth 2.0 Web client secret. |
-| `ALLOWED_EMAILS`       | one of\* | n/a         | Comma-separated exact addresses (case-insensitive). |
-| `ALLOWED_DOMAINS`      | one of\* | n/a         | Comma-separated domains, e.g. `example.com`. |
+| `ALLOWED_EMAILS`       | yes      | n/a         | Comma-separated exact addresses (case-insensitive). |
 | `ROOM_SYNC_MS`         | no       | `6000`      | ms to wait for the room scene to sync before capture. |
 | `HOST`                 | no       | `127.0.0.1` | Gateway bind address (keep on loopback; expose via the tunnel). |
 | `PORT`                 | no       | `8040`      | Gateway listen port. |
 | `EMAIL_CLAIM`          | no       | `email`     | Which OAuth claim carries the email. |
 | `DEBUG`                | no       | `false`     | Log decoded claims per request. |
-
-\* At least one of `ALLOWED_EMAILS` / `ALLOWED_DOMAINS` must be set or the server exits.
 
 ## Quickstart
 
@@ -104,7 +101,7 @@ tail -f /tmp/excalidraw-screenshot-connector.log /tmp/excalidraw-screenshot-conn
 | --- | --- |
 | `curl {PUBLIC_URL}/mcp` not 401 | tunnel down / wrong URL; check the ngrok log |
 | Redirects but login fails | redirect URI mismatch; must be exactly `{PUBLIC_URL}/auth/callback` |
-| Logs in but tool never appears | allowlist rejecting; check `AUTHED CLAIMS` (set `DEBUG=true`); fix `EMAIL_CLAIM` or the list |
+| Logs in but tool never appears | allowlist rejecting (or `ALLOWED_EMAILS` is not set); check `AUTHED CLAIMS` (set `DEBUG=true`); fix `EMAIL_CLAIM` or the list |
 | "Could not capture the Excalidraw canvas" | the Live collaboration session was closed, or it isn't a `#room=` URL; restart the session and pass the new link |
 | Blank / partial capture | drawing still syncing; raise `ROOM_SYNC_MS` |
 | Chromium errors under launchd | re-run `uv run server.py --install-browsers` |

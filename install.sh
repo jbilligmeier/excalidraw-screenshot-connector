@@ -52,8 +52,8 @@ set -a; source "$SCRIPT_DIR/.env"; set +a
 : "${PUBLIC_URL:?must be set in .env}"
 : "${GOOGLE_CLIENT_ID:?must be set in .env}"
 : "${GOOGLE_CLIENT_SECRET:?must be set in .env}"
-if [[ -z "${ALLOWED_EMAILS:-}" && -z "${ALLOWED_DOMAINS:-}" ]]; then
-  echo "ERROR: set ALLOWED_EMAILS and/or ALLOWED_DOMAINS in .env (fail closed)." >&2
+if [[ -z "${ALLOWED_EMAILS:-}" ]]; then
+  echo "ERROR: set ALLOWED_EMAILS in .env (fail closed)." >&2
   exit 1
 fi
 
@@ -79,8 +79,7 @@ pair() { printf '        <key>%s</key>\n        <string>%s</string>' "$1" "$(xml
 ENV_BLOCK="$(pair PUBLIC_URL "$PUBLIC_URL")"
 ENV_BLOCK+=$'\n'"$(pair GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID")"
 ENV_BLOCK+=$'\n'"$(pair GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET")"
-[[ -n "${ALLOWED_EMAILS:-}"  ]] && ENV_BLOCK+=$'\n'"$(pair ALLOWED_EMAILS "$ALLOWED_EMAILS")"
-[[ -n "${ALLOWED_DOMAINS:-}" ]] && ENV_BLOCK+=$'\n'"$(pair ALLOWED_DOMAINS "$ALLOWED_DOMAINS")"
+ENV_BLOCK+=$'\n'"$(pair ALLOWED_EMAILS "$ALLOWED_EMAILS")"
 [[ -n "${ROOM_SYNC_MS:-}"    ]] && ENV_BLOCK+=$'\n'"$(pair ROOM_SYNC_MS "$ROOM_SYNC_MS")"
 [[ -n "${HOST:-}"            ]] && ENV_BLOCK+=$'\n'"$(pair HOST "$HOST")"
 ENV_BLOCK+=$'\n'"$(pair PORT "$PORT")"
