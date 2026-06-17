@@ -86,6 +86,8 @@ ENV_BLOCK+=$'\n'"$(pair GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET")"
 ENV_BLOCK+=$'\n'"$(pair PORT "$PORT")"
 [[ -n "${EMAIL_CLAIM:-}"     ]] && ENV_BLOCK+=$'\n'"$(pair EMAIL_CLAIM "$EMAIL_CLAIM")"
 [[ -n "${DEBUG:-}"           ]] && ENV_BLOCK+=$'\n'"$(pair DEBUG "$DEBUG")"
+[[ -n "${JWT_SIGNING_KEY:-}" ]] && ENV_BLOCK+=$'\n'"$(pair JWT_SIGNING_KEY "$JWT_SIGNING_KEY")"
+[[ -n "${ALLOWED_REDIRECT_URI_PATTERNS:-}" ]] && ENV_BLOCK+=$'\n'"$(pair ALLOWED_REDIRECT_URI_PATTERNS "$ALLOWED_REDIRECT_URI_PATTERNS")"
 ENV_BLOCK+=$'\n'"$(pair PATH "$TOOL_PATH")"
 
 CAFF_ARGS=""

@@ -167,6 +167,13 @@ async def _ssrf_guard(route):
     await route.continue_()
 
 
+# Stable JWT signing key so the persistent OAuth disk store stays decryptable
+# across gateway restarts (and survives a Google client-secret rotation). When
+# unset, fastmcp derives the key from the client secret, which silently
+# invalidates every stored session on a version change or a secret rotation.
+JWT_SIGNING_KEY = os.environ.get("JWT_SIGNING_KEY", "").strip()
+_auth_kwargs = {"jwt_signing_key": JWT_SIGNING_KEY} if JWT_SIGNING_KEY else {}
+
 # --- OAuth provider --------------------------------------------------------
 auth = GoogleProvider(
     client_id=os.environ["GOOGLE_CLIENT_ID"],
@@ -174,6 +181,7 @@ auth = GoogleProvider(
     base_url=os.environ["PUBLIC_URL"],
     required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
     allowed_client_redirect_uris=ALLOWED_REDIRECT_URI_PATTERNS,
+    **_auth_kwargs,  # stable jwt_signing_key when JWT_SIGNING_KEY is set
 )
 
 mcp = FastMCP("Excalidraw Screenshot", auth=auth)
