@@ -32,6 +32,7 @@ connector in Claude.ai. See README.md.
 import os
 import sys
 import asyncio
+import ipaddress
 from urllib.parse import urlparse
 
 from fastmcp import FastMCP
@@ -70,6 +71,20 @@ if not ALLOWED_EMAILS and not ALLOWED_DOMAINS:
         "OAuth flow could drive this tool."
     )
 
+# MCP clients (Claude.ai) register their own redirect URI via Dynamic Client
+# Registration. Constrain which ones we'll accept so a rogue client can't
+# register an attacker-controlled callback. Comma-separated fnmatch globs;
+# override via ALLOWED_REDIRECT_URI_PATTERNS (e.g. to add a localhost dev client).
+ALLOWED_REDIRECT_URI_PATTERNS = [
+    p.strip()
+    for p in os.environ.get(
+        "ALLOWED_REDIRECT_URI_PATTERNS",
+        "https://claude.ai/*,https://claude.com/*,"
+        "https://*.claude.ai/*,https://*.claude.com/*",
+    ).split(",")
+    if p.strip()
+]
+
 
 def _is_allowed(email: str | None) -> bool:
     if not email:
@@ -80,15 +95,24 @@ def _is_allowed(email: str | None) -> bool:
     return email.rpartition("@")[2] in ALLOWED_DOMAINS
 
 
+def _is_verified(claims: dict) -> bool:
+    """Google must assert the email is verified — otherwise the address is
+    attacker-settable and the allowlist (esp. ALLOWED_DOMAINS) is spoofable."""
+    v = claims.get("email_verified")
+    return v is True or (isinstance(v, str) and v.strip().lower() == "true")
+
+
 class OnlyAllowed(Middleware):
     """Reject any authenticated user not on the email/domain allowlist."""
 
     async def on_request(self, context: MiddlewareContext, call_next):
         token = get_access_token()
         claims = (token.claims if token else None) or {}
+        email = claims.get(EMAIL_CLAIM)
         if DEBUG:
-            print(f"AUTHED CLAIMS: {claims}", flush=True)
-        if not _is_allowed(claims.get(EMAIL_CLAIM)):
+            # Log only the decision inputs, never the full claims dict (PII/token).
+            print(f"AUTHED: email={email!r} verified={claims.get('email_verified')!r}", flush=True)
+        if not _is_verified(claims) or not _is_allowed(email):
             raise ToolError("Not authorized")
         return await call_next(context)
 
@@ -108,12 +132,48 @@ def _is_excalidraw_url(url: str) -> bool:
     return host == "excalidraw.com" or host.endswith(".excalidraw.com")
 
 
+def _is_internal_host(host: str) -> bool:
+    """True for loopback/private/link-local/reserved targets. Used to block SSRF:
+    the headless browser must never reach cloud metadata (169.254.169.254), other
+    local services (127.0.0.1:*), or RFC1918 hosts, even via a redirect."""
+    h = (host or "").lower().rstrip(".")
+    if h in {"localhost", "localhost.localdomain", ""}:
+        return True
+    try:
+        ip = ipaddress.ip_address(h)
+    except ValueError:
+        return False  # a public hostname; can't classify by string alone
+    return (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+    )
+
+
+async def _ssrf_guard(route):
+    """Per-request firewall for the headless browser. Blocks non-web schemes and
+    any internal/private target outright, and forces every top-level navigation
+    (including redirects) to stay on excalidraw.com — so a redirect can't bounce
+    the page to an arbitrary or internal host. Public sub-resources (fonts/CDN)
+    that the loaded page itself requests are allowed."""
+    req = route.request
+    u = urlparse(req.url)
+    host = (u.hostname or "").lower()
+    if u.scheme not in ("http", "https") or _is_internal_host(host):
+        await route.abort()
+        return
+    if req.is_navigation_request() and not _is_excalidraw_url(req.url):
+        await route.abort()
+        return
+    await route.continue_()
+
+
 # --- OAuth provider --------------------------------------------------------
 auth = GoogleProvider(
     client_id=os.environ["GOOGLE_CLIENT_ID"],
     client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
     base_url=os.environ["PUBLIC_URL"],
     required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
+    allowed_client_redirect_uris=ALLOWED_REDIRECT_URI_PATTERNS,
 )
 
 mcp = FastMCP("Excalidraw Screenshot", auth=auth)
@@ -144,6 +204,8 @@ async def screenshot_excalidraw(url: str) -> Image:
             browser = await pw.chromium.launch(headless=True)
             try:
                 page = await browser.new_page(viewport={"width": 1440, "height": 900})
+                # SSRF firewall: gate every request the page makes (incl. redirects).
+                await page.route("**/*", _ssrf_guard)
                 await page.goto(url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
                 await page.wait_for_selector("canvas", timeout=20000)
                 await page.wait_for_timeout(ROOM_SYNC_MS)        # let the room sync
