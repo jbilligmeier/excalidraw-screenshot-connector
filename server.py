@@ -86,13 +86,17 @@ ALLOWED_REDIRECT_URI_PATTERNS = [
 ]
 
 
-def _is_allowed(email: str | None) -> bool:
+def _is_allowed(claims: dict) -> bool:
+    """Authorize a request from its OAuth claims. An exact ALLOWED_EMAILS match
+    is trusted as-is (a pre-authorized address you control). A domain match
+    additionally requires a Google-verified email, since an unverified address
+    in an allowed domain is attacker-settable."""
+    email = (claims.get(EMAIL_CLAIM) or "").strip().lower()
     if not email:
         return False
-    email = email.lower()
     if email in ALLOWED_EMAILS:
         return True
-    return email.rpartition("@")[2] in ALLOWED_DOMAINS
+    return _is_verified(claims) and email.rpartition("@")[2] in ALLOWED_DOMAINS
 
 
 def _is_verified(claims: dict) -> bool:
@@ -112,7 +116,7 @@ class OnlyAllowed(Middleware):
         if DEBUG:
             # Log only the decision inputs, never the full claims dict (PII/token).
             print(f"AUTHED: email={email!r} verified={claims.get('email_verified')!r}", flush=True)
-        if not _is_verified(claims) or not _is_allowed(email):
+        if not _is_allowed(claims):
             raise ToolError("Not authorized")
         return await call_next(context)
 
